@@ -238,7 +238,7 @@ void FfmpegHandler::addFfmpegResourceFields(const std::shared_ptr<CdsItem>& item
                 int bitsPerSample = as_codecpar(st)->bits_per_coded_sample;
                 log_debug("Bits per coded sample: {}", bitsPerSample);
 
-                sampleFreq = sampleFreq * bitsPerSample > 0 ? bitsPerSample : 1;
+                sampleFreq = sampleFreq * (bitsPerSample > 0 ? bitsPerSample : 1);
                 log_debug("Added sample frequency: {} Hz from stream {}", sampleFreq, i);
                 resource->addAttribute(R_SAMPLEFREQUENCY, fmt::to_string(sampleFreq));
                 audioset = true;
