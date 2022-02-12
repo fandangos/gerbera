@@ -99,13 +99,13 @@ public:
     std::string quote(std::string_view str) const { return quote(std::string(str)); }
     // required to handle #defines
     std::string quote(const char* str) const { return quote(std::string(str)); }
-    std::string quote(int val) const { return fmt::to_string(val); }
-    std::string quote(unsigned int val) const { return fmt::to_string(val); }
-    std::string quote(long val) const { return fmt::to_string(val); }
-    std::string quote(unsigned long val) const { return fmt::to_string(val); }
-    std::string quote(bool val) const { return val ? "1" : "0"; }
     std::string quote(char val) const { return quote(fmt::to_string(val)); }
-    std::string quote(long long val) const { return fmt::to_string(val); }
+    static std::string quote(int val) { return fmt::to_string(val); }
+    static std::string quote(unsigned int val) { return fmt::to_string(val); }
+    static std::string quote(long val) { return fmt::to_string(val); }
+    static std::string quote(unsigned long val) { return fmt::to_string(val); }
+    static std::string quote(bool val) { return val ? "1" : "0"; }
+    static std::string quote(long long val) { return fmt::to_string(val); }
 
     // hooks for transactions
     virtual void beginTransaction(std::string_view tName) { }
@@ -178,11 +178,11 @@ public:
     int insert(std::string_view tableName, const std::vector<SQLIdentifier>& fields, const std::vector<std::string>& values, bool getLastInsertId = false);
     void insertMultipleRows(std::string_view tableName, const std::vector<SQLIdentifier>& fields, const std::vector<std::vector<std::string>>& valuesets);
     template <typename T>
-    void updateRow(std::string_view tableName, const std::vector<ColumnUpdate>& values, std::string_view where_key, const T& where_value);
+    void updateRow(std::string_view tableName, const std::vector<ColumnUpdate>& values, std::string_view key, const T& value);
     void deleteAll(std::string_view tableName);
     template <typename T>
-    void deleteRow(std::string_view tableName, std::string_view where_key, const T& where_value);
-    void deleteRows(std::string_view tableName, std::string_view where_key, const std::vector<int>& where_values);
+    void deleteRow(std::string_view tableName, std::string_view key, const T& value);
+    void deleteRows(std::string_view tableName, std::string_view key, const std::vector<int>& values);
 
 protected:
     explicit SQLDatabase(const std::shared_ptr<Config>& config, std::shared_ptr<Mime> mime);
@@ -242,7 +242,7 @@ private:
     /* helper class and helper function for addObject and updateObject */
     class AddUpdateTable {
     public:
-        AddUpdateTable(std::string tableName, std::map<std::string, std::string>&& dict, Operation operation) noexcept
+        AddUpdateTable(std::string&& tableName, std::map<std::string, std::string>&& dict, Operation operation) noexcept
             : tableName(std::move(tableName))
             , dict(std::move(dict))
             , operation(operation)
@@ -302,9 +302,9 @@ private:
 };
 
 template <typename T>
-void SQLDatabase::updateRow(std::string_view tableName, const std::vector<ColumnUpdate>& values, std::string_view where_key, const T& where_value)
+void SQLDatabase::updateRow(std::string_view tableName, const std::vector<ColumnUpdate>& values, std::string_view key, const T& value)
 {
-    exec(fmt::format("UPDATE {} SET {} WHERE {} = {}", identifier(tableName), fmt::join(values, ", "), identifier(where_key), quote(where_value)));
+    exec(fmt::format("UPDATE {} SET {} WHERE {} = {}", identifier(tableName), fmt::join(values, ", "), identifier(key), quote(value)));
 }
 
 template <typename T>

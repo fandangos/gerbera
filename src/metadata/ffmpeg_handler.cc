@@ -97,7 +97,6 @@ void FfmpegHandler::addFfmpegMetadataFields(const std::shared_ptr<CdsItem>& item
 {
     AVDictionaryEntry* e = nullptr;
     auto sc = StringConverter::m2i(CFG_IMPORT_LIBOPTS_FFMPEG_CHARSET, item->getLocation(), config);
-    metadata_fields_t field = M_MAX;
 
     constexpr auto propertyMap = std::array {
         std::pair(M_TITLE, "title"),
@@ -126,17 +125,15 @@ void FfmpegHandler::addFfmpegMetadataFields(const std::shared_ptr<CdsItem>& item
             [&](auto&& p) { return p.second == key && item->getMetaData(p.first).empty(); });
         if (pIt != propertyMap.end()) {
             log_debug("Identified default metadata '{}': {}", pIt->second, value);
-            field = pIt->first;
+            const auto field = pIt->first;
             item->addMetaData(field, sc->convert(trimString(value)));
             if (field == M_TRACKNUMBER) {
                 item->setTrackNumber(stoiString(value));
             } else if (field == M_PARTNUMBER) {
                 item->setPartNumber(stoiString(value));
             }
-            continue; // iterate while loop
-        }
-        if (key == "date") {
-            field = M_DATE;
+        } else if (key == "date") {
+            constexpr auto field = M_DATE;
             /// \todo parse possible ISO8601 timestamp
             if (item->getMetaData(field).empty() && (value.length() == 4) && std::all_of(value.begin(), value.end(), ::isdigit) && (std::stoi(value) > 0)) {
                 value.append("-01-01");
@@ -145,7 +142,7 @@ void FfmpegHandler::addFfmpegMetadataFields(const std::shared_ptr<CdsItem>& item
                 item->addMetaData(field, value);
             }
         } else if (key == "creation_time") {
-            field = M_CREATION_DATE;
+            constexpr auto field = M_CREATION_DATE;
             if (item->getMetaData(field).empty()) {
                 log_debug("Identified metadata 'creation_time': {}", e->value);
                 std::tm tmWork;
@@ -173,7 +170,7 @@ void FfmpegHandler::addFfmpegResourceFields(const std::shared_ptr<CdsItem>& item
     int audioch, sampleFreq;
     bool audioset, videoset;
     auto resource = item->getResource(0);
-    bool isAudioFile = startswith(item->getMimeType(), "audio") && item->getResourceCount() > 1 && item->getResource(1)->isMetaResource(ID3_ALBUM_ART);
+    bool isAudioFile = item->getClass() == UPNP_CLASS_MUSIC_TRACK && item->getResourceCount() > 1 && item->getResource(1)->isMetaResource(ID3_ALBUM_ART);
     auto resource2 = isAudioFile ? item->getResource(1) : item->getResource(0);
 
     // duration
@@ -253,7 +250,7 @@ void FfmpegHandler::addFfmpegResourceFields(const std::shared_ptr<CdsItem>& item
     }
 
 #if defined(HAVE_FFMPEG) && defined(HAVE_FFMPEGTHUMBNAILER)
-    if (config->getBoolOption(CFG_SERVER_EXTOPTS_FFMPEGTHUMBNAILER_ENABLED) && (startswith(item->getMimeType(), "video") || item->getFlag(OBJECT_FLAG_OGG_THEORA))) {
+    if (config->getBoolOption(CFG_SERVER_EXTOPTS_FFMPEGTHUMBNAILER_ENABLED) && item->getClass() == UPNP_CLASS_VIDEO_ITEM) {
         std::string videoresolution = item->getResource(0)->getAttribute(R_RESOLUTION);
         auto [x, y] = checkResolution(videoresolution);
 

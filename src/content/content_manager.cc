@@ -411,7 +411,7 @@ std::shared_ptr<CdsObject> ContentManager::createSingleItem(const fs::directory_
 
             { // only lock mutex while processing item layout
                 std::scoped_lock<decltype(layoutMutex)> lock(layoutMutex);
-                layout->processCdsObject(obj, rootPath, mimetype, contentType);
+                layout->processCdsObject(obj, rootPath, contentType);
             }
 
 #ifdef HAVE_JS
@@ -895,13 +895,12 @@ void ContentManager::finishScan(const std::shared_ptr<AutoscanDirectory>& adir, 
         adir->setCurrentLMT(location, lmt > std::chrono::seconds::zero() ? lmt : std::chrono::seconds(1));
         if (parent && lmt > std::chrono::seconds::zero()) {
             parent->setMTime(lmt);
-            int changedContainer;
             int count = 0;
             if (firstObject) {
                 auto objectLocation = firstObject->getLocation(); // ensure same object is used
                 count = std::distance(objectLocation.begin(), objectLocation.end()) - std::distance(location.begin(), location.end());
             }
-            database->updateObject(parent, &changedContainer);
+            database->updateObject(parent, nullptr);
             assignFanArt(parent, firstObject, count);
         }
     }
@@ -1155,7 +1154,6 @@ void ContentManager::assignFanArt(const std::shared_ptr<CdsContainer>& container
             }
             database->updateObject(container, nullptr);
         }
-        count++;
     }
 }
 
@@ -1748,10 +1746,12 @@ void ContentManager::triggerPlayHook(const std::shared_ptr<CdsObject>& obj)
 {
     log_debug("start");
 
+    auto item = std::static_pointer_cast<CdsItem>(obj);
+
     if (config->getBoolOption(CFG_SERVER_EXTOPTS_MARK_PLAYED_ITEMS_ENABLED) && !obj->getFlag(OBJECT_FLAG_PLAYED)) {
         std::vector<std::string> markList = config->getArrayOption(CFG_SERVER_EXTOPTS_MARK_PLAYED_ITEMS_CONTENT_LIST);
 
-        bool mark = std::any_of(markList.begin(), markList.end(), [&](auto&& i) { return startswith(std::static_pointer_cast<CdsItem>(obj)->getMimeType(), i); });
+        bool mark = std::any_of(markList.begin(), markList.end(), [&](auto&& i) { return startswith(item->getMimeType(), i); });
         if (mark) {
             obj->setFlag(OBJECT_FLAG_PLAYED);
 
@@ -1762,8 +1762,8 @@ void ContentManager::triggerPlayHook(const std::shared_ptr<CdsObject>& obj)
     }
 
 #ifdef HAVE_LASTFMLIB
-    if (config->getBoolOption(CFG_SERVER_EXTOPTS_LASTFM_ENABLED) && startswith(std::static_pointer_cast<CdsItem>(obj)->getMimeType(), ("audio"))) {
-        last_fm->startedPlaying(std::static_pointer_cast<CdsItem>(obj));
+    if (config->getBoolOption(CFG_SERVER_EXTOPTS_LASTFM_ENABLED) && item->getClass() == UPNP_CLASS_MUSIC_TRACK) {
+        last_fm->startedPlaying(item);
     }
 #endif
     log_debug("end");

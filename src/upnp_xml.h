@@ -80,7 +80,7 @@ public:
     /// \brief Renders a resource tag (part of DIDL-Lite XML)
     /// \param URL download location of the item (will be child element of the <res> tag)
     /// \param attributes Dictionary containing the <res> tag attributes (like resolution, etc.)
-    static void renderResource(const std::string& URL, const std::map<std::string, std::string>& attributes, pugi::xml_node& parent);
+    static void renderResource(const std::string& url, const std::map<std::string, std::string>& attributes, pugi::xml_node& parent);
 
     std::pair<std::string, bool> renderContainerImage(const std::string& virtualURL, const std::shared_ptr<CdsContainer>& cont);
     std::pair<std::string, bool> renderItemImage(const std::string& virtualURL, const std::shared_ptr<CdsItem>& item);
@@ -105,7 +105,7 @@ protected:
     const std::string virtualURL;
     const std::string presentationURL;
     std::string entrySeparator;
-    bool multiValue;
+    bool multiValue {};
     std::map<std::string, std::string> ctMappings;
 
     /// \brief Holds a part of path and bool which says if we need to append the resource
